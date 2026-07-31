@@ -11,6 +11,10 @@ metadata:
     # trident.qnap.io/Deduplication: "true"
     # trident.qnap.io/Compression: "true"
     # trident.qnap.io/FastClone: "true"
+
+    # I/O synchronization mode: default, sync, or async
+    # "async" is not supported on QTS 6.0 or later and will fail volume creation.
+    # trident.qnap.io/IoSyncMode: "default"
 spec:
   accessModes:
     - ReadWriteOnce

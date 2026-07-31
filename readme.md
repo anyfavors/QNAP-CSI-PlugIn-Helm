@@ -36,7 +36,7 @@ Figure 1. Process of creating a volume with the QNAP CSI driver.
 ### CSI Driver Version and Compatibility  
 | **Driver Version** | **Supported Kubernetes Versions** | **Supported QNAP NAS Operating Systems**                |  
 |------------------- | --------------------------------- | ------------------------------------- | 
-| v1.6.0             | v1.24 to v1.35                    | QTS 5.1.0 or later<br>QuTS hero h5.1.0 or later|
+| v1.6.2             | v1.24 to v1.35                    | QTS 5.1.0 or later (including QTS 6.0)<br>QuTS hero h5.1.0 or later (including QuTS hero h6.0.0)|
  
 ### Supported Host Operating Systems  
 - Debian 8 or later  
@@ -247,14 +247,14 @@ Please refer to the following examples.
       type: Opaque
       stringData:
         username: user # Required. Your NAS username.
-        password: 0000 # Required. Your NAS password.
+        password: "0000" # Required. Your NAS password.
         chapInitiatorUsername: <initiator_username> # Optional. Username used by the initiator to authenticate to the target.
         chapInitiatorPassword: <initiator_password> # Optional. Password for the initiator’s CHAP authentication. 
         chapTargetUsername: <target_username> # Optional. Username used by the target to authenticate back to the initiator (for mutual CHAP).
         chapTargetPassword: <target_password> # Optional. Password for the target’s CHAP authentication (for mutual CHAP). 
-        storageAddress: 0.0.0.0 # Required. Your NAS IP address.
-        https: false # Optional. Whether to enable a secure connection. Default: False.
-        port: 8080 # Optional. Specify the port. Default: 8080.
+        storageAddress: "0.0.0.0" # Required. Your NAS IP address.
+        https: "false" # Optional. Whether to enable a secure connection. Default: False.
+        port: "8080" # Optional. Specify the port. Default: 8080.
         trustedCACertificate: <Base64-encoded-trusted-ca-certificate-for-backend> # Optional. Base64-encoded value of trusted CA certificate. Used for certificate-based authentication. 
       ---
       apiVersion: trident.qnap.io/v1
@@ -267,7 +267,7 @@ Please refer to the following examples.
         storageDriverName: qnap-nas #Required. Support 'qnap-nas'(latest) or 'qnap-iscsi'
         backendName: qts # Required. Name your backend in QNAP CSI.
         networkInterfaces: ["Adapter1"] # Optional. Your adapter name or leave it empty.
-        userCHAP: true # Optional. Enables CHAP authentication for iSCSI connections. 
+        useCHAP: true # Optional. Enables CHAP authentication for iSCSI connections.
         credentials:
           name: backend-qts-secret # Required. Enter the secret name set in metadata.name.
         debugTraceFlags:
@@ -303,8 +303,8 @@ Please refer to the following examples.
           "chapTargetPassword": "<target_password>", 
           "https": "false",
           "port": "8080",
-          "trustedCACertificate": "<Base64-encoded-trusted-ca-certificate-for-backend>" 
-          "networkInterfaces": ["Adapter1"], 
+          "trustedCACertificate": "<Base64-encoded-trusted-ca-certificate-for-backend>",
+          "networkInterfaces": ["Adapter1"],
           "useCHAP": "true",
           "debugTraceFlags": {"method": true},
           "storage": [
@@ -323,10 +323,17 @@ Please refer to the following examples.
                       "raidLevel": "1"
                   },
                   "serviceLevel": "pool2"
-              },
+              }
           ]
       }
       ```  
+
+> [!NOTE]
+> When a backend is registered, the driver automatically detects the operating system version of each NAS target and adapts its behavior accordingly. The version is always read from the NAS itself and cannot be declared through the backend configuration, a StorageClass, a ConfigMap, a Secret, or an environment variable.
+> <br>If the version cannot be determined, the backend fails to register: it enters the `Failed` state and exposes no storage pools, so any PVC that resolves to it stays pending. Run the following command to check the backend state and the reported error.
+> ```
+> ./<your tridentctl path> get backend -n trident
+> ```
 
 2. In the YAML or JSON file, configure the following based on your NAS settings and usage requirements.
     * Specify the correct NAS `user`, `password`, and `IP address`.
@@ -440,19 +447,34 @@ stringData:
   2. Configure the file based on your usage requirements.
 
       * Bind the StorageClass using the `storageClassName` field.
-      * Set your volume feature requirements in the `annotations` field using the prefix `trident.qnap.io/`. For example, `trident.qnap.io/threshold: "90"`. Refer to the following table for details.
+      * Set your volume feature requirements in the `annotations` field using the prefix `trident.qnap.io/`. For example, `trident.qnap.io/Threshold: "90"`. Annotation names are case-sensitive; enter them exactly as listed in the following table.
 
         Volume features:
         | Feature            | Description |Value        | Note           |
         |--------------------|--------|------|----------------|
         | Threshold          | Monitors storage usage to trigger alerts when capacity limits are reached, preventing overuse. |0-100      |                |
         | ThinAllocate       | Dynamically allocates storage space to meet demands, optimizing usage and avoiding shortages. |true, false | 
+        | IoSyncMode         | Sets the I/O synchronization behavior of the volume. |default, sync, async | iSCSI protocol only. Refer to the note below. |
         | SharedFolderRecycleBin       | Enable or disable the Recycle Bin based on your needs. |true, false |SMB protocol only |
         | Compression        | Compresses files to reduce size, saving space and allowing more storage on the NAS. |true, false | Only QuTS hero |
         | Deduplication      | Eliminates duplicate data to reduce storage needs and minimize network data transfers.|true, false | Only QuTS hero |
         | FastClone          | Creates file copies faster to save space by sharing data blocks between originals and copies.|true, false | Only QuTS hero |
         | importOriginalName | The original volume name. | string       | Refer to [Importing a PVC](#importing-a-pvc) in the "Operations" section.               |
         | importBackendName  | The imported backend name. |string       |       Refer to [Importing a PVC](#importing-a-pvc) in the "Operations" section.         |
+
+> [!NOTE]
+> `IoSyncMode` is applied only when the volume is created, and the resulting setting depends on the operating system of the target NAS.
+>
+> | IoSyncMode | QTS earlier than 6.0 | QTS 6.0 or later | QuTS hero |
+> |------------|----------------------|------------------|-----------|
+> | default    | AsyncIO disabled     | Synchronous by design. No configuration is required. | ZIL synchronized I/O mode: Auto |
+> | sync       | AsyncIO disabled     | Synchronous by design. No configuration is required. | ZIL synchronized I/O mode: Always |
+> | async      | AsyncIO enabled      | Not supported. Volume creation fails. | ZIL synchronized I/O mode: None |
+>
+> Also note the following:
+> - The annotation name is case-sensitive: `trident.qnap.io/IoSyncMode`. Any value other than `default`, `sync`, or `async` causes volume creation to fail.
+> - Editing or removing the annotation after the PVC is bound does not change the setting of the existing volume.
+> - This feature is configured on the PVC only. The StorageClass does not provide an equivalent parameter.
 
 <a name="Deployment"></a> 
 ## Deployment

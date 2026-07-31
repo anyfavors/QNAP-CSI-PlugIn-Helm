@@ -3,7 +3,7 @@ apiVersion: v1
 metadata:
   name: pvc-qts-david
   annotations:
-    trident.qnap.io/threshold: "90"
+    trident.qnap.io/Threshold: "90"
     trident.qnap.io/ThinAllocate: "true"
 spec:
   accessModes:

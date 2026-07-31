@@ -11,8 +11,8 @@
     "chapTargetPassword": "<target_password>", 
     "https": "false",
     "port": "8080",
-    "trustedCACertificate": "<Base64-encoded-trusted-ca-certificate-for-backend>" 
-    "networkInterfaces": ["Adapter1"], 
+    "trustedCACertificate": "<Base64-encoded-trusted-ca-certificate-for-backend>",
+    "networkInterfaces": ["Adapter1"],
     "useCHAP": "true",
     "debugTraceFlags": {"method": true},
     "storage": [
@@ -31,6 +31,6 @@
                 "raidLevel": "1"
             },
             "serviceLevel": "pool2"
-        },
+        }
     ]
 }

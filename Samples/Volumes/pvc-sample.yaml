@@ -3,8 +3,12 @@ apiVersion: v1
 metadata:
   name: pvc1
   annotations: # Required. Define features for your volume.
-    trident.qnap.io/threshold: "90"
+    trident.qnap.io/Threshold: "90"
     trident.qnap.io/ThinAllocate: "true"
+
+    # I/O synchronization mode. iSCSI only. Accepted values: default, sync, async.
+    # "async" is not supported on QTS 6.0 or later and will fail volume creation.
+    # trident.qnap.io/IoSyncMode: "default"
 spec:
   accessModes:
     - ReadWriteOnce # Required. iSCSI: ReadWriteOnce, Samba: ReadWriteMany

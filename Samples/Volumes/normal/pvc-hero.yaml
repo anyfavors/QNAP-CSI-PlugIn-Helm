@@ -10,6 +10,10 @@ metadata:
     trident.qnap.io/Deduplication: "true"
     trident.qnap.io/Compression: "true"
     trident.qnap.io/FastClone: "true"
+
+    # I/O synchronization mode: default, sync, or async
+    # On QuTS hero these map to ZIL synchronized I/O mode Auto, Always, and None.
+    # trident.qnap.io/IoSyncMode: "default"
 spec:
   accessModes:
     - ReadWriteOnce
